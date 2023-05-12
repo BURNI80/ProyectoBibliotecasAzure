@@ -14,7 +14,7 @@
             }
             else
             {
-            <img src="~/imgs/bibliotecas/@Model.IMAGEN" alt="">
+            <img src="@Model.IMAGEN" alt="">
             }
             <div class="textos-biblioteca">
                 <p class="nombre">@Model.NOMBRE</p>
@@ -116,7 +116,7 @@
                             }
                             else
                             {
-                                <img src="~/imgs/libros/@l.IMAGEN" alt="">
+                                <img src="@l.IMAGEN" alt="">
                             }
                             @if (l.DISPONIBLE == true)
                             {

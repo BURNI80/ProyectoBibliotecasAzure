@@ -2,6 +2,7 @@
 using ProyectoBibliotecas.Extensions;
 using ProyectoBibliotecas.Models;
 using ProyectoBibliotecas.Repositorys;
+using ProyectoBibliotecas.Services;
 using System.Collections.Generic;
 using System.Net;
 
@@ -9,11 +10,13 @@ namespace ProyectoBibliotecas.Controllers
 {
     public class LibrosController : Controller
     {
-        BibliotecasRepository repo;
+        private ServiceApiBibliotecas service;
+        private ServiceStorageBlobs storageBlob;
 
-        public LibrosController(BibliotecasRepository repo)
+        public LibrosController(ServiceApiBibliotecas service, ServiceStorageBlobs storageBlob)
         {
-            this.repo = repo;
+            this.service = service;
+            this.storageBlob = storageBlob;
         }
 
         public IActionResult IndexLibros()

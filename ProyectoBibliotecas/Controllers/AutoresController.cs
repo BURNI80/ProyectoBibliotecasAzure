@@ -1,38 +1,69 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using ProyectoBibliotecas.Repositorys;
+using NuguetProyectoBibliotecas.Models;
+using ProyectoBibliotecas.Services;
+using System.Collections.Generic;
 
 namespace ProyectoBibliotecas.Controllers
 {
     public class AutoresController : Controller
     {
-        private BibliotecasRepository repo;
+        private ServiceApiBibliotecas service;
+        private ServiceStorageBlobs storageBlob;
 
-        public AutoresController(BibliotecasRepository repository)
+        public AutoresController(ServiceApiBibliotecas service, ServiceStorageBlobs storageBlob)
         {
-            this.repo = repository;
+            this.service = service;
+            this.storageBlob = storageBlob;
         }
 
-        public IActionResult IndexAutores()
+        public async Task<IActionResult> IndexAutores()
         {
-            return View(this.repo.GetAutores());
+            List<Autor> autores = await service.GetAutores();
+            foreach(Autor a in autores)
+            {
+                a.IMAGEN = await this.storageBlob.GetUrl("autores", a.IMAGEN);
+            }
+            return View(autores);
         }
 
         [HttpPost]
-        public IActionResult IndexAutores(string search)
+        public async Task<IActionResult> IndexAutores(string search)
         {
-            return View(this.repo.SearchAutor(search));
+            List<Autor> autores = await this.service.SearchAutor(search);
+            foreach (Autor a in autores)
+            {
+                a.IMAGEN = await this.storageBlob.GetUrl("autores", a.IMAGEN);
+            }
+            return View(autores);
         }
 
-        public IActionResult DetailsAutor(int id)
+        public async Task<IActionResult> DetailsAutor(int id)
         {
-            ViewData["LIBROS"] = this.repo.GetLibrosAutor(id);
-            return View(this.repo.GetDatosAutor(id));
+            List<LibroDefault> libros = await this.service.GetLibrosAutor(id);
+            foreach(LibroDefault l in libros)
+            {
+                l.IMAGEN = await this.storageBlob.GetUrl("libros", l.IMAGEN);
+            }
+            ViewData["LIBROS"] = libros;
+
+            Autor autor = await this.service.GetDatosAutor(id);
+            autor.IMAGEN = await this.storageBlob.GetUrl("autores", autor.IMAGEN);
+            return View(autor);
         }
+
         [HttpPost]
-        public IActionResult DetailsAutor(int id, string input)
+        public async Task<IActionResult> DetailsAutor(int id, string input)
         {
-            ViewData["LIBROS"] = this.repo.SearchLibroAutor(id, input);
-            return View(this.repo.GetDatosAutor(id));
+            List<LibroDefault> libros = await this.service.SearchLibroAutor(id, input);
+            foreach (LibroDefault l in libros)
+            {
+                l.IMAGEN = await this.storageBlob.GetUrl("libros", l.IMAGEN);
+            }
+            ViewData["LIBROS"] = libros;
+
+            Autor autor = await this.service.GetDatosAutor(id);
+            autor.IMAGEN = await this.storageBlob.GetUrl("autores", autor.IMAGEN);
+            return View(autor);
         }
     }
 }

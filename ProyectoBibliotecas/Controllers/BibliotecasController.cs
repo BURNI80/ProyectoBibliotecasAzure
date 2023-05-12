@@ -1,40 +1,69 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using ProyectoBibliotecas.Repositorys;
+using NuguetProyectoBibliotecas.Models;
+using ProyectoBibliotecas.Services;
 
 namespace ProyectoBibliotecas.Controllers
 {
     public class BibliotecasController : Controller
     {
-        private BibliotecasRepository repo;
+        private ServiceApiBibliotecas service;
+        private ServiceStorageBlobs serviceStorageBlobs;
 
-        public BibliotecasController(BibliotecasRepository repo)
+        public BibliotecasController(ServiceApiBibliotecas service, ServiceStorageBlobs serviceStorageBlobs)
         {
-            this.repo = repo;
+            this.service = service;
+            this.serviceStorageBlobs = serviceStorageBlobs;
         }
 
-        public IActionResult IndexBibliotecas()
+        public async Task<IActionResult> IndexBibliotecas()
         {
-            return View(this.repo.GetBibliotecas());
+            List<Biblioteca> biblios = await this.service.GetBibliotecas();
+            foreach(Biblioteca biblioteca in biblios)
+            {
+                biblioteca.IMAGEN = await this.serviceStorageBlobs.GetUrl("bibliotecas", biblioteca.IMAGEN);
+            }
+            return View(biblios);
         }
 
         [HttpPost]
-        public IActionResult IndexBibliotecas(string search)
+        public async Task<IActionResult> IndexBibliotecas(string search)
         {
-            return View(this.repo.SearchBiblioteca(search));
+            List<Biblioteca> biblios = await this.service.SearchBiblioteca(search);
+            foreach (Biblioteca biblioteca in biblios)
+            {
+                biblioteca.IMAGEN = await this.serviceStorageBlobs.GetUrl("bibliotecas", biblioteca.IMAGEN);
+            }
+            return View(biblios);
         }
 
         [HttpGet]
-        public IActionResult DetailsBiblioteca(int id)
+        public async Task<IActionResult> DetailsBiblioteca(int id)
         {
-            ViewData["LISTALIBROS"] = this.repo.GetLibrosBiblioteca(id);
-            return View(this.repo.GetDatosBiblioteca(id));
+            List<LibroDisponibilidad> libros = await this.service.GetLibrosBiblioteca(id);
+            foreach (LibroDisponibilidad l in libros)
+            {
+                l.IMAGEN = await this.serviceStorageBlobs.GetUrl("libros", l.IMAGEN);
+            }
+            ViewData["LISTALIBROS"] = libros;
+
+            Biblioteca biblio = await this.service.DetailsBiblioteca(id);
+            biblio.IMAGEN = await this.serviceStorageBlobs.GetUrl("bibliotecas", biblio.IMAGEN);
+            return View(biblio);
         }
 
         [HttpPost]
-        public IActionResult DetailsBiblioteca(int id, string input, char option)
+        public async Task<IActionResult> DetailsBiblioteca(int id, string input, char option)
         {
-            ViewData["LISTALIBROS"] = this.repo.SearchLibroBiblioteca(id,input,option);
-            return View(this.repo.GetDatosBiblioteca(id));
+            List<LibroDisponibilidad> libros = await this.service.SearchLibroBiblioteca(id, input, option);
+            foreach (LibroDisponibilidad l in libros)
+            {
+                l.IMAGEN = await this.serviceStorageBlobs.GetUrl("libros", l.IMAGEN);
+            }
+            ViewData["LISTALIBROS"] = libros;
+
+            Biblioteca biblio = await this.service.DetailsBiblioteca(id);
+            biblio.IMAGEN = await this.serviceStorageBlobs.GetUrl("bibliotecas", biblio.IMAGEN);
+            return View(biblio); ;
         }
     }
 }
