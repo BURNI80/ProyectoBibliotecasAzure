@@ -1,20 +1,20 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
+using NuguetProyectoBibliotecas.Models;
 using ProyectoBibliotecas.Extensions;
-using ProyectoBibliotecas.Models;
-using ProyectoBibliotecas.Repositorys;
+using ProyectoBibliotecas.Services;
 using System.Security.Claims;
 
 namespace ProyectoBibliotecas.Controllers
 {
     public class ManagedController : Controller
     {
-        BibliotecasRepository repo;
+        private ServiceApiBibliotecas service;
 
-        public ManagedController(BibliotecasRepository repo)
+        public ManagedController(ServiceApiBibliotecas service)
         {
-            this.repo = repo;
+            this.service = service;
         }
 
 
@@ -30,7 +30,9 @@ namespace ProyectoBibliotecas.Controllers
             if (usuario == null)
             {
                 //LOGIN
-                Usuario user = this.repo.Login(dni, password);
+                string token = await this.service.GetTokenAsync(dni, password);
+                HttpContext.Session.SetString("token", token);
+                Usuario user = await this.service.GetUsu(dni, password);
                 if (user == null)
                 {
                     ViewData["MSG"] = "Incorrecto";
@@ -55,7 +57,7 @@ namespace ProyectoBibliotecas.Controllers
             }
             else
             {
-                await this.repo.Register(nombre, apellidos, dni, usuario, password, email, telefono);
+                await this.service.Register(nombre, apellidos, dni, usuario, password, email, telefono);
             }
             return View();
 

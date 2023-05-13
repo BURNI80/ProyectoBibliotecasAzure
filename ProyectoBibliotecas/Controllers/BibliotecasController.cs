@@ -55,6 +55,10 @@ namespace ProyectoBibliotecas.Controllers
         public async Task<IActionResult> DetailsBiblioteca(int id, string input, char option)
         {
             List<LibroDisponibilidad> libros = await this.service.SearchLibroBiblioteca(id, input, option);
+            if (input == null)
+            {
+                libros = await this.service.GetLibrosBiblioteca(id);
+            }
             foreach (LibroDisponibilidad l in libros)
             {
                 l.IMAGEN = await this.serviceStorageBlobs.GetUrl("libros", l.IMAGEN);

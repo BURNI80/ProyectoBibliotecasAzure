@@ -12,7 +12,7 @@
 <div class="imagen-fondo-libro">
     @if (Model.IMAGEN != null)
     {
-        <img src="~/imgs/libros/@Model.IMAGEN" alt="Imagen de fondo" style="z-index:0 !important;">
+        <img src="@Model.IMAGEN" alt="Imagen de fondo" style="z-index:0 !important;">
     }
     <div class="degradado" style="z-index:1 !important;"></div>
     <div class="contenido-libro-biblio" style="z-index:2 !important;">
@@ -110,7 +110,14 @@
             <div class="separador"></div>
             <p class="comentarios">@ViewData["VALORACIONES"] valoraciones</p>
             <div class="separador"></div>
-            <p class="comentarios">@comentarios.Count comentarios</p>
+            @if (comentarios == null)
+            {
+                <p class="comentarios">0 comentarios</p>
+            }
+            else
+            {
+                <p class="comentarios">@comentarios.Count comentarios</p>
+            }
         </div>
         @if (Context.User.Identity.Name != null)
         {
@@ -144,12 +151,12 @@
                             <input hidden value="@Model.ID_LIBRO" name="idLibro" type="text" readonly />
                             <label for="comment" class="sr-only">Tu comentario</label>
                             <textarea id="comment" rows="4" name="textoComentario"
-                                      class="w-full px-0 text-sm text-gray-900 bg-white border-0 dark:bg-gray-800 focus:ring-0 dark:text-white dark:placeholder-gray-400"
-                                      placeholder="Escribe un comentario... | Dejelo vacio para que sea una valoracion"></textarea>
+                                  class="w-full px-0 text-sm text-gray-900 bg-white border-0 dark:bg-gray-800 focus:ring-0 dark:text-white dark:placeholder-gray-400"
+                                  placeholder="Escribe un comentario... | Dejelo vacio para que sea una valoracion"></textarea>
                         </div>
                         <div class="flex items-center justify-between px-3 py-2 border-t dark:border-gray-600">
                             <button id="btnComentario"
-                                    class="inline-flex items-center py-2.5 px-4 text-xs font-medium text-center text-white bg-blue-700 rounded-lg focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-900 hover:bg-blue-800">
+                                class="inline-flex items-center py-2.5 px-4 text-xs font-medium text-center text-white bg-blue-700 rounded-lg focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-900 hover:bg-blue-800">
                                 Publicar
                             </button>
                             <div style="width:100%;">
@@ -171,7 +178,7 @@
                 </div>
             }
         </div>
-        @if (comentarios.Count() <= 0)
+        @if (comentarios == null || comentarios.Count <= 0)
         {
             <h1 class="titulo-comentario" style="font-size:20px !important;padding:0px;">No hay comentarios</h1>
         }

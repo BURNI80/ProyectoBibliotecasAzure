@@ -1,73 +1,79 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ProyectoBibliotecas.Extensions;
+using NuguetProyectoBibliotecas.Models;
 using ProyectoBibliotecas.Filters;
-using ProyectoBibliotecas.Helpers;
-using ProyectoBibliotecas.Models;
-using ProyectoBibliotecas.Repositorys;
+using ProyectoBibliotecas.Services;
+using System.Collections.Generic;
 
 namespace ProyectoBibliotecas.Controllers
 {
 
     public class AdministracionController : Controller
     {
-        private BibliotecasRepository repo;
-        private HelperUploadFiles upload;
+        private ServiceApiBibliotecas service;
+        private ServiceStorageBlobs storageBlobs;
 
-        public AdministracionController(BibliotecasRepository repo, HelperUploadFiles upload)
+        public AdministracionController(ServiceApiBibliotecas service, ServiceStorageBlobs storageBlobs)
         {
-            this.repo = repo;
-            this.upload = upload;
+            this.service = service;
+            this.storageBlobs = storageBlobs;
         }
 
         [AuthorizeUsers]
-        public IActionResult Perfil_Info(string id)
+        public async Task<IActionResult> Perfil_Info(string id)
         {
+            string token = HttpContext.Session.GetString("token");
             id = HttpContext.User.Identity.Name;
-            ViewData["NCOMENTARIOS"] = this.repo.NComentarios(id);
-            ViewData["NLEIDOS"] = this.repo.NLibrosLeidos(id);
-            ViewData["NRESEÑAS"] = this.repo.NReseñas(id);
-            return View(this.repo.GetUsuario(id));
+            ViewData["NCOMENTARIOS"] = await this.service.NComentarios(id,token);
+            ViewData["NLEIDOS"] = await this.service.NLibrosLeidos(id, token);
+            ViewData["NRESEÑAS"] = await this.service.NReseñas(id, token);
+            return View(await this.service.GetUsuario(id, token));
         }
 
+
         [AuthorizeUsers]
-        public IActionResult EditPerfil()
+        public async Task<IActionResult> EditPerfil()
         {
             string id = HttpContext.User.Identity.Name;
-            return View(this.repo.GetUsuario(id));
+            return View(await this.service.GetUsuario(id, HttpContext.Session.GetString("token")));
         }
+
 
         [AuthorizeUsers]
         [HttpPost]
-        public IActionResult EditPerfil(string nombre, string apellido, string email, int telefono, string usuario)
+        public async Task<IActionResult> EditPerfil(string nombre, string apellido, string email, int telefono, string usuario)
         {
             string id = HttpContext.User.Identity.Name;
-            this.repo.UpdateUsuario(id, nombre, apellido, email, telefono, usuario);
+            await this.service.UpdateUsuario(id, nombre, apellido, email, telefono, usuario, HttpContext.Session.GetString("token"));
             return RedirectToAction("Perfil_Info", "Administracion");
         }
 
+
         [AuthorizeUsers]
-        public IActionResult Perfil_Comentarios(string id)
+        public async Task<IActionResult> Perfil_Comentarios(string id)
         {
             id = HttpContext.User.Identity.Name;
-            return View(this.repo.GetComentariosUsuario(id));
+            return View(await this.service.GetComentariosUsuario(id, HttpContext.Session.GetString("token")));
         }
+        
+        
         [AuthorizeUsers]
         [HttpPost]
-        public void DeleteComentario(int idComentario)
+        public async Task DeleteComentario(int idComentario)
         {
-            this.repo.DeleteComentario(idComentario);
+            await this.service.DeleteComentario(idComentario, HttpContext.Session.GetString("token"));
         }
+
 
         [AuthorizeUsers]
-        public IActionResult Perfil_Reservas(string id)
+        public async Task<IActionResult> Perfil_Reservas(string id)
         {
             id = HttpContext.User.Identity.Name;
-            return View(this.repo.GetReservasUsuario(id));
+            return View(await this.service.GetReservasUsuario(id, HttpContext.Session.GetString("token")));
         }
 
 
-        public IActionResult Lista_LibrosFavoritos(string id, string token)
+        public async Task<IActionResult> Lista_LibrosFavoritos(string id, string token)
         {
             string dniUser = HttpContext.User.Identity.Name;
             if (id == null)
@@ -76,11 +82,16 @@ namespace ProyectoBibliotecas.Controllers
             }
             if (id.Equals(dniUser))
             {
-                return View(this.repo.GetFavoritos(id));
+                List<LibroDeseo> libros = await this.service.GetFavoritos(id, HttpContext.Session.GetString("token"));
+                foreach(LibroDeseo l in libros)
+                {
+                    l.IMAGEN = await this.storageBlobs.GetUrl("libros", l.IMAGEN);
+                }
+                return View(libros);
             }
             else
             {
-                Compartido share = this.repo.GetShare(id);
+                Compartido share = await this.service.GetShare(id, HttpContext.Session.GetString("token"));
                 if (share == null)
                 {
                     return RedirectToAction("NoAccess", "Managed");
@@ -89,7 +100,12 @@ namespace ProyectoBibliotecas.Controllers
                 {
                     if (share.TOKEN.Equals(token))
                     {
-                        return View(this.repo.GetFavoritos(id));
+                        List<LibroDeseo> libros = await this.service.GetFavoritos(id, HttpContext.Session.GetString("token"));
+                        foreach (LibroDeseo l in libros)
+                        {
+                            l.IMAGEN = await this.storageBlobs.GetUrl("libros", l.IMAGEN);
+                        }
+                        return View(libros);
                     }
                     else
                     {
@@ -99,7 +115,8 @@ namespace ProyectoBibliotecas.Controllers
             }
         }
 
-        public IActionResult Lista_LibrosLeidos(string id, string? token)
+
+        public async Task<IActionResult> Lista_LibrosLeidos(string id, string? token)
         {
             string dniUser = HttpContext.User.Identity.Name;
             if (id == null)
@@ -108,11 +125,16 @@ namespace ProyectoBibliotecas.Controllers
             }
             if (id.Equals(dniUser))
             {
-                return View(this.repo.GetFavoritos(id));
+                List<LibroDeseo> libros = await this.service.GetFavoritos(id, HttpContext.Session.GetString("token"));
+                foreach (LibroDeseo l in libros)
+                {
+                    l.IMAGEN = await this.storageBlobs.GetUrl("libros", l.IMAGEN);
+                }
+                return View(libros);
             }
             else
             {
-                Compartido share = this.repo.GetShare(id);
+                Compartido share = await this.service.GetShare(id, HttpContext.Session.GetString("token"));
                 if (share == null)
                 {
                     return RedirectToAction("NoAccess", "Managed");
@@ -121,7 +143,12 @@ namespace ProyectoBibliotecas.Controllers
                 {
                     if (share.TOKEN.Equals(token))
                     {
-                        return View(this.repo.GetFavoritos(id));
+                        List<LibroDeseo> libros = await this.service.GetFavoritos(id, HttpContext.Session.GetString("token"));
+                        foreach (LibroDeseo l in libros)
+                        {
+                            l.IMAGEN = await this.storageBlobs.GetUrl("libros", l.IMAGEN);
+                        }
+                        return View(libros);
                     }
                     else
                     {
@@ -130,36 +157,39 @@ namespace ProyectoBibliotecas.Controllers
                 }
             }
         }
+
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
-        public IActionResult Admin_Panel()
+        public async Task<IActionResult> Admin_Panel()
         {
             if (HttpContext.User.IsInRole("EDITOR"))
             {
-                ViewData["BIBLIOTECAS"] = this.repo.GetBibliotecasEditables(HttpContext.User.Identity.Name);
+                ViewData["BIBLIOTECAS"] = await this.service.GetBibliotecasEditables(HttpContext.User.Identity.Name, HttpContext.Session.GetString("token"));
             }
             if (HttpContext.User.IsInRole("ADMIN"))
             {
-                ViewData["BIBLIOTECAS"] = this.repo.GetBibliotecasSimples();
+                ViewData["BIBLIOTECAS"] = await this.service.GetBibliotecasSimples();
             }
             return View();
         }
 
+
         [AuthorizeUsers]
         [HttpPost]
-        public string Share(string dni, string path)
+        public async Task<string> Share(string dni, string path)
         {
-            string token = this.repo.GenerateToken();
-            Compartido realToken = this.repo.GetToken(dni, token);
+            string token = this.service.GenerateToken();
+            Compartido realToken = await this.service.GetToken(dni, token);
             return path + "?token=" + realToken.TOKEN;
         }
 
+
         [Authorize]
         [HttpPost]
-        public void EliminarReserva(int id)
+        public async Task EliminarReserva(int id)
         {
-            this.repo.DeleteReserva(id);
+            await this.service.DeleteReserva(id, HttpContext.Session.GetString("token"));
         }
 
 
@@ -170,18 +200,18 @@ namespace ProyectoBibliotecas.Controllers
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
-        public IActionResult Bibliotecas()
+        public async Task<IActionResult> Bibliotecas()
         {
-            return View(this.repo.GetBibliotecas());
+            return View(await this.service.GetBibliotecas());
         }
 
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
         [HttpPost]
-        public void EliminarBiblioteca(int id)
+        public async Task EliminarBiblioteca(int id)
         {
-            this.repo.DeleteBiblioteca(id);
+            await this.service.DeleteBiblioteca(id, HttpContext.Session.GetString("token"));
         }
 
 
@@ -200,14 +230,17 @@ namespace ProyectoBibliotecas.Controllers
         {
             if (imagen == null)
             {
-                this.repo.AddBiblio(nombre, direccion, telefono, web, hora_apertura, hora_cierre, null);
+                await this.service.AddBiblio(nombre, direccion, telefono, web, hora_apertura, hora_cierre, null, HttpContext.Session.GetString("token"));
 
             }
             else
             {
                 string fileName = imagen.FileName;
-                await this.upload.UploadFileAsync(imagen, Folders.Bibliotecas);
-                this.repo.AddBiblio(nombre, direccion, telefono, web, hora_apertura, hora_cierre, fileName.ToString());
+                using (Stream stream = imagen.OpenReadStream())
+                {
+                    await this.storageBlobs.UploadBlobAsync("bibliotecas", fileName, stream);
+                }
+                await this.service.AddBiblio(nombre, direccion, telefono, web, hora_apertura, hora_cierre, fileName.ToString(), HttpContext.Session.GetString("token"));
 
             }
             return RedirectToAction("Bibliotecas", "Administracion");
@@ -216,9 +249,9 @@ namespace ProyectoBibliotecas.Controllers
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
-        public IActionResult EditarBiblioteca(int id)
+        public async Task<IActionResult> EditarBiblioteca(int id)
         {
-            return View(this.repo.GetDatosBiblioteca(id));
+            return View(await this.service.DetailsBiblioteca(id));
         }
 
 
@@ -229,13 +262,16 @@ namespace ProyectoBibliotecas.Controllers
         {
             if (imagen == null)
             {
-                this.repo.UpdateBiblio(id, nombre, direccion, telefono, web, hora_apertura, hora_cierre, nImagen);
+                await this.service.UpdateBiblio(id, nombre, direccion, telefono, web, hora_apertura, hora_cierre, nImagen, HttpContext.Session.GetString("token"));
             }
             else
             {
                 string fileName = imagen.FileName;
-                await this.upload.UploadFileAsync(imagen, Folders.Bibliotecas);
-                this.repo.UpdateBiblio(id, nombre, direccion, telefono, web, hora_apertura, hora_cierre, fileName);
+                using (Stream stream = imagen.OpenReadStream())
+                {
+                    await this.storageBlobs.UploadBlobAsync("bibliotecas", fileName, stream);
+                }
+                await this.service.UpdateBiblio(id, nombre, direccion, telefono, web, hora_apertura, hora_cierre, fileName, HttpContext.Session.GetString("token"));
             }
             return RedirectToAction("Bibliotecas", "Administracion");
 
@@ -247,26 +283,26 @@ namespace ProyectoBibliotecas.Controllers
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
-        public IActionResult Libros()
+        public async Task<IActionResult> Libros()
         {
-            return View(this.repo.GetLibrosTodos());
+            return View(await this.service.GetLibrosTodos(HttpContext.Session.GetString("token")));
         }
 
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
         [HttpPost]
-        public void EliminarLibro(int id)
+        public async Task EliminarLibro(int id)
         {
-            this.repo.DeleteLibro(id);
+            await this.service.DeleteLibro(id, HttpContext.Session.GetString("token"));
         }
 
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
-        public IActionResult NuevoLibro()
+        public async Task<IActionResult> NuevoLibro()
         {
-            ViewData["AUTORES"] = this.repo.GetAutores();
+            ViewData["AUTORES"] = await this.service.GetAutores();
             return View();
         }
 
@@ -278,13 +314,16 @@ namespace ProyectoBibliotecas.Controllers
         {
             if (imagen == null)
             {
-                this.repo.AddLibro(nombre, numpag, null, urlcompra, descripcion, idioma, fecha_publicacion, idautor);
+                await this.service.AddLibro(nombre, numpag, null, urlcompra, descripcion, idioma, fecha_publicacion, idautor, HttpContext.Session.GetString("token"));
             }
             else
             {
                 string fileName = imagen.FileName;
-                await this.upload.UploadFileAsync(imagen, Folders.Libros);
-                this.repo.AddLibro(nombre, numpag, fileName, urlcompra, descripcion, idioma, fecha_publicacion, idautor);
+                using (Stream stream = imagen.OpenReadStream())
+                {
+                    await this.storageBlobs.UploadBlobAsync("libros", fileName, stream);
+                }
+                await this.service.AddLibro(nombre, numpag, fileName, urlcompra, descripcion, idioma, fecha_publicacion, idautor, HttpContext.Session.GetString("token"));
             }
             return RedirectToAction("Libros", "Administracion");
         }
@@ -292,10 +331,10 @@ namespace ProyectoBibliotecas.Controllers
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
-        public IActionResult EditarLibro(int id)
+        public async Task<IActionResult> EditarLibro(int id)
         {
-            ViewData["AUTORES"] = this.repo.GetAutores();
-            return View(this.repo.GetDatosLibroDef(id));
+            ViewData["AUTORES"] = await this.service.GetAutores();
+            return View(await this.service.GetDatosLibroDef(id));
         }
 
 
@@ -306,13 +345,16 @@ namespace ProyectoBibliotecas.Controllers
         {
             if (imagen == null)
             {
-                this.repo.UpdateLibro(id, nombre, numpag, nImagen, urlcompra, descripcion, idioma, fecha_publicacion, idautor);
+                await this.service.UpdateLibro(id, nombre, numpag, nImagen, urlcompra, descripcion, idioma, fecha_publicacion, idautor, HttpContext.Session.GetString("token"));
             }
             else
             {
                 string fileName = imagen.FileName;
-                await this.upload.UploadFileAsync(imagen, Folders.Libros);
-                this.repo.UpdateLibro(id, nombre, numpag, fileName, urlcompra, descripcion, idioma, fecha_publicacion, idautor);
+                using (Stream stream = imagen.OpenReadStream())
+                {
+                    await this.storageBlobs.UploadBlobAsync("libros", fileName, stream);
+                }
+                await this.service.UpdateLibro(id, nombre, numpag, fileName, urlcompra, descripcion, idioma, fecha_publicacion, idautor, HttpContext.Session.GetString("token"));
             }
             return RedirectToAction("Libros", "Administracion");
         }
@@ -320,18 +362,20 @@ namespace ProyectoBibliotecas.Controllers
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
-        public IActionResult Autores()
+        public async Task<IActionResult> Autores()
         {
-            return View(this.repo.GetAutores());
+            return View(await this.service.GetAutores());
         }
+
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
         [HttpPost]
-        public void EliminarAutor(int id)
+        public async Task EliminarAutor(int id)
         {
-            this.repo.DeleteAutor(id);
+            await this.service.DeleteAutor(id, HttpContext.Session.GetString("token"));
         }
+
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
@@ -340,6 +384,7 @@ namespace ProyectoBibliotecas.Controllers
             return View();
         }
 
+
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
         [HttpPost]
@@ -347,22 +392,26 @@ namespace ProyectoBibliotecas.Controllers
         {
             if (imagen == null)
             {
-                this.repo.AddAutor(nombre, nacionalidad, fechaNac, null, descripcion, numLibros, wiki);
+                await this.service.AddAutor(nombre, nacionalidad, fechaNac, null, descripcion, numLibros, wiki, HttpContext.Session.GetString("token"));
             }
             else
             {
                 string fileName = imagen.FileName;
-                await this.upload.UploadFileAsync(imagen, Folders.Autores);
-                this.repo.AddAutor(nombre, nacionalidad, fechaNac, fileName, descripcion, numLibros, wiki);
+                using (Stream stream = imagen.OpenReadStream())
+                {
+                    await this.storageBlobs.UploadBlobAsync("autores", fileName, stream);
+                }
+                await this.service.AddAutor(nombre, nacionalidad, fechaNac, fileName, descripcion, numLibros, wiki, HttpContext.Session.GetString("token"));
             }
             return RedirectToAction("Autores", "Administracion");
         }
 
+
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
-        public IActionResult EditarAutor(int id)
+        public async Task<IActionResult> EditarAutor(int id)
         {
-            return View(this.repo.GetDatosAutor(id));
+            return View(await this.service.GetDatosAutor(id));
         }
 
 
@@ -373,13 +422,16 @@ namespace ProyectoBibliotecas.Controllers
         {
             if (imagen == null)
             {
-                this.repo.UpdateAutor(id, nombre, nacionalidad, fechaNac, nImagen, descripcion, numLibros, wiki);
+                await this.service.UpdateAutor(id, nombre, nacionalidad, fechaNac, nImagen, descripcion, numLibros, wiki, HttpContext.Session.GetString("token"));
             }
             else
             {
                 string fileName = imagen.FileName;
-                await this.upload.UploadFileAsync(imagen, Folders.Autores);
-                this.repo.UpdateAutor(id, nombre, nacionalidad, fechaNac, fileName, descripcion, numLibros, wiki);
+                using (Stream stream = imagen.OpenReadStream())
+                {
+                    await this.storageBlobs.UploadBlobAsync("autores", fileName, stream);
+                }
+                await this.service.UpdateAutor(id, nombre, nacionalidad, fechaNac, fileName, descripcion, numLibros, wiki, HttpContext.Session.GetString("token"));
 
             }
             return RedirectToAction("Autores", "Administracion");
@@ -388,63 +440,65 @@ namespace ProyectoBibliotecas.Controllers
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
-        public IActionResult LibrosBiblioteca(int id)
+        public async Task<IActionResult> LibrosBiblioteca(int id)
         {
-            ViewData["LIBROSADD"] = this.repo.GetLibrosNotInBiblioteca(id);
+            ViewData["LIBROSADD"] = await this.service.GetLibrosNotInBiblioteca(id, HttpContext.Session.GetString("token"));
             @ViewData["IDBIBLIO"] = id;
-            return View(this.repo.GetLibrosBiblioteca(id));
+            return View(await this.service.GetLibrosBiblioteca(id));
         }
+
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
         [HttpPost]
-        public void AddLibroBiblio(int idBiblio, int idLibro)
+        public async Task AddLibroBiblio(int idBiblio, int idLibro)
         {
-            this.repo.AddLibroBiblio(idBiblio, idLibro);
+            await this.service.AddLibroBiblio(idBiblio, idLibro , HttpContext.Session.GetString("token"));
         }
+
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
         [HttpPost]
-        public void EliminarLibroBiblioteca(int idBiblio, int idLibro)
+        public async Task EliminarLibroBiblioteca(int idBiblio, int idLibro)
         {
-            this.repo.DeleteLibroBiblio(idBiblio, idLibro);
+            await this.service.DeleteLibroBiblio(idBiblio, idLibro, HttpContext.Session.GetString("token"));
         }
 
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
-        public IActionResult PrestamosBiblioteca(int id)
+        public async Task<IActionResult> PrestamosBiblioteca(int id)
         {
             @ViewData["IDBIBLIO"] = id;
-            return View(this.repo.GetReservasBiblio(id));
+            return View(await this.service.GetReservasBiblio(id, HttpContext.Session.GetString("token")));
         }
 
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
         [HttpPost]
-        public void EliminarPrestamoBiblioteca(int id)
+        public async Task EliminarPrestamoBiblioteca(int id)
         {
-            this.repo.DeleteReserva(id);
+            await this.service.DeleteReserva(id, HttpContext.Session.GetString("token"));
         }
 
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
         [HttpPost]
-        public void RecogerLibro(int idPrestamo, int idBiblio)
+        public async Task RecogerLibro(int idPrestamo, int idBiblio)
         {
-            this.repo.RecogerLibro(idPrestamo, idBiblio);
+            await this.service.RecogerLibro(idPrestamo, idBiblio, HttpContext.Session.GetString("token"));
         }
 
 
         [AuthorizeUsers(Policy = "ADMIN")]
         [AuthorizeUsers]
         [HttpPost]
-        public void DevolverLibro(int idPrestamo, int idBiblio)
+        public async Task DevolverLibro(int idPrestamo, int idBiblio)
         {
-            this.repo.DevolverLibro(idPrestamo, idBiblio);
+            await this.service.DevolverLibro(idPrestamo, idBiblio, HttpContext.Session.GetString("token"));
         }
     }
 }

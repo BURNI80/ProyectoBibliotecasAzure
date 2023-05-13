@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using ProyectoBibliotecas.Extensions;
-using ProyectoBibliotecas.Models;
-using ProyectoBibliotecas.Repositorys;
+using NuguetProyectoBibliotecas.Models;
 using ProyectoBibliotecas.Services;
 using System.Collections.Generic;
 using System.Net;
@@ -19,24 +17,38 @@ namespace ProyectoBibliotecas.Controllers
             this.storageBlob = storageBlob;
         }
 
-        public IActionResult IndexLibros()
+        public async Task<IActionResult> IndexLibros()
         {
-            return View(this.repo.SearchLibroBiblioteca(-1, null, 'T'));
+
+            List<LibroDisponibilidad> libros = await this.service.SearchLibroBiblioteca(-1, null, 'T');
+            foreach (LibroDisponibilidad l in libros)
+            {
+                l.IMAGEN = await this.storageBlob.GetUrl("libros", l.IMAGEN);
+            }
+            return View(libros);
         }
+
 
         [HttpPost]
-        public IActionResult IndexLibros(string input, char option)
+        public async Task<IActionResult> IndexLibros(string input, char option)
         {
-            return View(this.repo.SearchLibroBiblioteca(-1, input, option));
+            List<LibroDisponibilidad> libros = await this.service.SearchLibroBiblioteca(-1, input, option);
+            foreach (LibroDisponibilidad l in libros)
+            {
+                l.IMAGEN = await this.storageBlob.GetUrl("libros", l.IMAGEN);
+            }
+            return View(libros);
         }
 
 
-        public IActionResult DetailsLibro(int id)
+        public async Task<IActionResult> DetailsLibro(int id)
         {
-            ViewData["VALORACIONES"] = this.repo.GetValoraciones(id);
-            ViewData["BIBLIOTECAS"] = this.repo.GetLibroDisponible(id);
+            ViewData["VALORACIONES"] = await this.service.GetValoraciones(id);
+            ViewData["BIBLIOTECAS"] = await this.service.GetLibroDisponible(id);
             ViewData["FECHASNO"] = GetDiasReservado(id, 1);
             string dni;
+
+
             if (HttpContext.User.Identity.IsAuthenticated == false)
             {
                 dni = null;
@@ -45,33 +57,40 @@ namespace ProyectoBibliotecas.Controllers
             else
             {
                 dni = HttpContext.User.Identity.Name;
-                ViewData["LISTADESEOS"] = this.repo.LibroDeseo(id, dni);
+                ViewData["LISTADESEOS"] = await this.service.LibroDeseo(id, dni);
             }
-            ViewData["COMENTARIOS"] = this.repo.GetComentarios(id, dni);
+            this.ViewData["COMENTARIOS"] = await this.service.GetComentarios(dni, id);
+
             ViewData["DNI"] = dni;
-            return View(this.repo.GetDatosLibro(id));
+
+            Libro libro = await this.service.GetDatosLibro(id);
+            libro.IMAGEN = await this.storageBlob.GetUrl("libros", libro.IMAGEN);
+            return View(libro);
         }
 
         [HttpPost]
-        public ActionResult DetailsLibro(int orden, int id, string textoComentario, int rating, int idLibro)
+        public async Task<ActionResult> DetailsLibro(int orden, int id, string textoComentario, int rating, int idLibro)
         {
             string dni = HttpContext.User.Identity.Name;
-            ViewData["LISTADESEOS"] = this.repo.LibroDeseo(id, dni);
+            ViewData["LISTADESEOS"] = await this.service.LibroDeseo(id, dni);
             ViewData["FECHASNO"] = GetDiasReservado(id, 0);
-            ViewData["BIBLIOTECAS"] = this.repo.GetLibroDisponible(id);
+            ViewData["BIBLIOTECAS"] = await this.service.GetLibroDisponible(id);
             if (orden != 0)
             {
-                this.repo.LikeComentario(orden, id, dni);
+                await this.service.LikeComentario(orden, id, dni, HttpContext.Session.GetString("token"));
 
             }
             else
             {
                 DateTime fecha = DateTime.Now;
-                this.repo.PostComentario(idLibro, dni, fecha, textoComentario, rating);
-                ViewData["VALORACIONES"] = this.repo.GetValoraciones(id);
-                ViewData["COMENTARIOS"] = this.repo.GetComentarios(id, dni);
+                await this.service.PostComentario(idLibro, dni, fecha, textoComentario, rating, HttpContext.Session.GetString("token"));
+
+               ViewData["VALORACIONES"] = await this.service.GetValoraciones(id);
+                ViewData["COMENTARIOS"] = await this.service.GetComentarios(dni, id);
                 ViewData["DNI"] = dni;
-                return View(this.repo.GetDatosLibro(idLibro));
+                Libro libro = await this.service.GetDatosLibro(id);
+                libro.IMAGEN = await this.storageBlob.GetUrl("libros", libro.IMAGEN);
+                return View(libro);
             }
             return new EmptyResult();
 
@@ -81,28 +100,31 @@ namespace ProyectoBibliotecas.Controllers
         [HttpPost]
         public void AddListaLibro(string dni, int idLibro, int orden)
         {
-            this.repo.AddListaLibro(dni, idLibro, orden);
+            this.service.AddListaLibro(dni, idLibro, orden, HttpContext.Session.GetString("token"));
         }
 
 
         [HttpPost]
-        public List<string> GetDiasReservado(int id, int idBiblio)
+        public async Task<List<string>> GetDiasReservado(int id, int idBiblio)
         {
-            List<Reserva> reservas = this.repo.GetResrevasLibro(id, idBiblio);
+            List<Reserva> reservas = await this.service.GetResrevasLibro(id, idBiblio, HttpContext.Session.GetString("token"));
             List<string> resultado = new List<string>();
-            foreach (Reserva reserva in reservas)
+            if (reservas != null)
             {
-                List<string> arr = this.repo.GetDaysBetween(reserva.FECHA_INICIO, reserva.FECHA_FIN);
-                resultado.AddRange(arr);
+                foreach (Reserva reserva in reservas)
+                {
+                    List<string> arr = this.service.GetDaysBetween(reserva.FECHA_INICIO, reserva.FECHA_FIN);
+                    resultado.AddRange(arr);
+                }
             }
             return resultado;
         }
 
         [HttpPost]
-        public void ReservarLibro(int idLibro, int idBiblio, DateTime fechaInicio, DateTime fechaFin)
+        public async Task ReservarLibro(int idLibro, int idBiblio, DateTime fechaInicio, DateTime fechaFin)
         {
             string dni = HttpContext.User.Identity.Name;
-            this.repo.CreateReserva(dni, idLibro, idBiblio, fechaInicio, fechaFin);
+            await this.service.CreateReserva(dni, idLibro, idBiblio, fechaInicio, fechaFin, HttpContext.Session.GetString("token"));
         }
     }
 }
