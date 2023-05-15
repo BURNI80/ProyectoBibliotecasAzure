@@ -303,13 +303,13 @@ namespace ProyectoBibliotecas.Services
 
         public async Task CreateReserva(string dni, int idLibro, int idBiblio, DateTime fechaInicio, DateTime fechaFin, string token)
         {
-            Reserva res = new Reserva
+            var res = new
             {
                 DNI_USUARIO = dni,
                 ID_LIBRO = idLibro,
                 ID_BIBLIOTECA = idBiblio,
-                FECHA_FIN = fechaFin,
-                FECHA_INICIO = fechaInicio,
+                FECHA_FIN = fechaFin.ToString("yyyy-MM-dd"),
+                FECHA_INICIO = fechaInicio.ToString("yyyy-MM-dd"),
             };
 
             using (HttpClient client = new HttpClient())
