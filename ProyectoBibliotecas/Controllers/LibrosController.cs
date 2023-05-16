@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using NuguetProyectoBibliotecas.Models;
 using ProyectoBibliotecas.Services;
 using System.Collections.Generic;
@@ -10,11 +11,13 @@ namespace ProyectoBibliotecas.Controllers
     {
         private ServiceApiBibliotecas service;
         private ServiceStorageBlobs storageBlob;
+        private ILogger<LibrosController> logger;
 
-        public LibrosController(ServiceApiBibliotecas service, ServiceStorageBlobs storageBlob)
+        public LibrosController(ServiceApiBibliotecas service, ServiceStorageBlobs storageBlob, ILogger<LibrosController> logger)
         {
             this.service = service;
             this.storageBlob = storageBlob;
+            this.logger = logger;
         }
 
         public async Task<IActionResult> IndexLibros()
@@ -124,6 +127,8 @@ namespace ProyectoBibliotecas.Controllers
         public async Task ReservarLibro(int idLibro, int idBiblio, DateTime fechaInicio, DateTime fechaFin)
         {
             string dni = HttpContext.User.Identity.Name;
+            logger.LogWarning("fechaInicio: {fechaInicio}", fechaInicio, fechaInicio);
+
             await this.service.CreateReserva(dni, idLibro, idBiblio, fechaInicio, fechaFin, HttpContext.Session.GetString("token"));
         }
     }

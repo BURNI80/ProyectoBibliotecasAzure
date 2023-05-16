@@ -12,6 +12,8 @@ string azurekey = builder.Configuration.GetValue<string>("ConnectionStrings:Blob
 BlobServiceClient blobServiceClient = new BlobServiceClient(azurekey);
 builder.Services.AddTransient<BlobServiceClient>(x => blobServiceClient);
 
+
+
 builder.Services.AddSession(options => options.IdleTimeout = TimeSpan.FromMinutes(30));
 
 builder.Services.AddAuthentication(options =>

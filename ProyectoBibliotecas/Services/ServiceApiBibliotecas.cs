@@ -14,11 +14,13 @@ namespace ProyectoBibliotecas.Services
 
         private MediaTypeWithQualityHeaderValue Header;
         private string UrlApi;
+        private ILogger<ServiceApiBibliotecas> logger;
 
-        public ServiceApiBibliotecas(IConfiguration configuration)
+        public ServiceApiBibliotecas(IConfiguration configuration, ILogger<ServiceApiBibliotecas> logger)
         {
             this.UrlApi = configuration.GetValue<string>("ConnectionStrings:ApiBibliotecas");
             this.Header = new MediaTypeWithQualityHeaderValue("application/json");
+            this.logger = logger;
         }
 
         public async Task<string> GetTokenAsync(string username, string password)
@@ -303,14 +305,15 @@ namespace ProyectoBibliotecas.Services
 
         public async Task CreateReserva(string dni, int idLibro, int idBiblio, DateTime fechaInicio, DateTime fechaFin, string token)
         {
-            var res = new
+            Reserva res = new Reserva 
             {
                 DNI_USUARIO = dni,
                 ID_LIBRO = idLibro,
                 ID_BIBLIOTECA = idBiblio,
-                FECHA_FIN = fechaFin.ToString("yyyy-MM-dd"),
-                FECHA_INICIO = fechaInicio.ToString("yyyy-MM-dd"),
+                FECHA_FIN = fechaFin.ToUniversalTime(),
+                FECHA_INICIO = fechaInicio.ToUniversalTime(),
             };
+            logger.LogWarning("RES: {res}",res.FECHA_FIN,res);
 
             using (HttpClient client = new HttpClient())
             {

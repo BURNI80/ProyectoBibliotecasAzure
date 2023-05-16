@@ -476,6 +476,17 @@
                 $("#confirmReserva").click(function () {
                     var fechaInicio = $("#from").val();
                     var fechaFin = $("#to").val();
+
+                    const fechaInicioP = fechaInicio.split('/')
+                    const fechaInicioF = `${fechaInicioP[2]}-${fechaInicioP[1]}-${fechaInicioP[0]}`;
+                    console.log(fechaInicioF);
+
+                    const fechaFinP = fechaFin.split('/')
+                    const fechaFinF = `${fechaFinP[2]}-${fechaFinP[1]}-${fechaFinP[0]}`;
+                    console.log(fechaFinF);
+                    
+                    console.log(fechaFin[2] + "-" + fechaFin[1] - 1 + "-" + fechaFin[0]);
+
                     var idLibro = "@Model.ID_LIBRO"
                     var idBiblio = $("#idBiblio").val()
                     var com = comprobarFechas(fechaInicio, fechaFin, disabledDates);
@@ -488,8 +499,8 @@
                     }
                     if (com == true) {
                         var datos = {
-                            fechaInicio: fechaInicio,
-                            fechaFin: fechaFin,
+                            fechaInicio: fechaInicioF,
+                            fechaFin: fechaFinF,
                             idLibro: idLibro,
                             idBiblio: idBiblio,
                         }
